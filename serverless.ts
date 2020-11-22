@@ -24,13 +24,12 @@ const serverlessConfiguration: Serverless = {
     },
   },
   functions: {
-    scrape: {
-      handler: "src/handler/scrape/index.handler",
+    list: {
+      handler: "src/handler/list/index.handler",
       events: [
         {
-          http: {
-            method: "get",
-            path: "scrape",
+          sqs: {
+            arn: "arn:aws:sqs:us-east-1:992256429851:job-event.fifo",
           },
         },
       ],
