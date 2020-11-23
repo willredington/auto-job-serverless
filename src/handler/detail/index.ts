@@ -119,7 +119,6 @@ export const createDetails = async (jobDetail: JobDetail) => {
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
     const jobEvent = JSON.parse(record.body) as ScrapeJobDetailEvent;
-    console.log("job event", jobEvent);
 
     // scrape job details
     const jobDetails = await getDetails(jobEvent);

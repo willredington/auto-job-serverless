@@ -38,18 +38,14 @@ const listJobs = async (jobEvent: ScrapeJobListingEvent) => {
   return details;
 };
 
-export const handler: SQSHandler = async (event, context) => {
-  console.log("context", context);
+export const handler: SQSHandler = async (event, _) => {
   for (const record of event.Records) {
     const jobEvent = JSON.parse(record.body) as ScrapeJobListingEvent;
-    console.log("job event", jobEvent);
 
     // scrape job details
     const jobDetails = await listJobs(jobEvent);
 
     const queueUrl = process.env.SCRAPE_QUEUE_URL;
-
-    console.log("QUEUE URL", queueUrl);
 
     // send job detail events to queue
     for (const jobDetail of jobDetails) {
