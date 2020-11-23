@@ -1,0 +1,78 @@
+service: auto-job
+
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+
+plugins:
+  - serverless-webpack
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  apiGateway:
+    minimumCompressionSize: 1024
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    SCRAPE_QUEUE_URL: { Ref: JobDetailQueue }
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+      Resource:
+        - Fn::GetAtt: [JobDetailQueue, Arn]
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+functions:
+  list:
+    handler: src/handler/list/index.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - JobEventQueue
+              - Arn
+  detail:
+    handler: src/handler/detail/index.handler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - JobDetailQueue
+              - Arn
+
+resources:
+  Resources:
+    JobEventQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: JobEventQueue
+    JobDetailQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: JobDetailQueue
+    JobTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        AttributeDefinitions:
+          - AttributeName: Id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: Id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

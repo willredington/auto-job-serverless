@@ -1,91 +1,95 @@
 import { SQSHandler } from "aws-lambda";
 import { ScrapeJobDetailEvent } from "model/event";
 import { Company, JobDetail, Tag } from "model/job-detail";
-import * as puppeteer from "puppeteer";
+import axios from "axios";
+import * as jsdom from "jsdom";
+import { v4 as uuidv4 } from "uuid";
+
 import "source-map-support/register";
+import { String } from "aws-sdk/clients/apigateway";
+import { DynamoDB } from "aws-sdk";
 
-const getTags = async (page: puppeteer.Page) => {
-  await page.waitForSelector("div.job-details--about");
+const dynamoDb = new DynamoDB.DocumentClient();
 
-  return await page.evaluate(() => {
-    let tags: Tag[] = [];
+const getTags = (dom: jsdom.JSDOM) => {
+  let tags: Tag[] = [];
 
-    const aboutElement = document.querySelector("div.job-details--about");
+  const aboutElement = dom.window.document.querySelector(
+    "div.job-details--about"
+  );
 
-    aboutElement.querySelectorAll("div.mb8").forEach((tagElement) => {
-      const spanTags = tagElement.querySelectorAll("span");
+  aboutElement.querySelectorAll("div.mb8").forEach((tagElement) => {
+    const spanTags = tagElement.querySelectorAll("span");
 
-      if (spanTags.length == 2) {
-        const name = spanTags.item(0).textContent.replace(":", "").trim();
-        const value = spanTags.item(1).textContent.trim();
+    if (spanTags.length == 2) {
+      const name = spanTags.item(0).textContent.replace(":", "").trim();
+      const value = spanTags.item(1).textContent.trim();
 
-        tags.push({
-          name,
-          value,
-        });
+      tags.push({
+        name,
+        value,
+      });
+    }
+  });
+
+  return tags;
+};
+
+const getTechnologies = (dom: jsdom.JSDOM) => {
+  let technologies: String[] = [];
+
+  dom.window.document.querySelectorAll("a.post-tag").forEach((tagElement) => {
+    technologies.push(tagElement.textContent);
+  });
+
+  return technologies;
+};
+
+const getCompany = (dom: jsdom.JSDOM) => {
+  let company!: Company;
+
+  const headerElement = dom.window.document.querySelector(
+    "header.job-details--header"
+  );
+
+  headerElement.querySelectorAll("a").forEach((anchorTag) => {
+    const link = anchorTag.getAttribute("href");
+
+    if (link) {
+      if (
+        anchorTag.classList.contains("employer") ||
+        (link.includes("companies") &&
+          anchorTag.classList.contains("fc-black-700"))
+      ) {
+        company = {
+          name: anchorTag.textContent,
+          link,
+        };
+
+        return;
       }
-    });
-
-    return tags;
+    }
   });
+
+  return company;
 };
 
-const getCompany = async (page: puppeteer.Page) => {
-  await page.waitForSelector("header.job-details--header");
-
-  return await page.evaluate(() => {
-    let company!: Company;
-
-    const headerElement = document.querySelector("header.job-details--header");
-
-    headerElement.querySelectorAll("a").forEach((anchorTag) => {
-      const link = anchorTag.getAttribute("href");
-
-      if (link) {
-        if (
-          anchorTag.classList.contains("employer") ||
-          (link.includes("companies") &&
-            anchorTag.classList.contains("fc-black-700"))
-        ) {
-          company = {
-            name: anchorTag.textContent,
-            link,
-          };
-
-          return;
-        }
-      }
-    });
-
-    return company;
-  });
+const getDescription = (dom: jsdom.JSDOM) => {
+  return dom.window.document
+    .querySelector("section.fs-body2")
+    .textContent.replace("Job description", "")
+    .trim();
 };
 
-const getDescription = async (page: puppeteer.Page) => {
-  await page.waitForSelector("section.fs-body2");
-
-  return page.evaluate(() => {
-    return document
-      .querySelector("section.fs-body2")
-      .textContent.replace("Job description", "")
-      .trim();
-  });
-};
-
-const getDetails = async (
-  jobEvent: ScrapeJobDetailEvent,
-  browser: puppeteer.Browser
-) => {
-  let page!: puppeteer.Page;
-
+const getDetails = async (jobEvent: ScrapeJobDetailEvent) => {
   try {
-    page = await browser.newPage();
+    const response = await axios.get(jobEvent.link);
+    const dom = new jsdom.JSDOM(response.data);
 
-    await page.goto(jobEvent.link);
-
-    const tags = await getTags(page);
-    const company = await getCompany(page);
-    const description = await getDescription(page);
+    const tags = getTags(dom);
+    const company = getCompany(dom);
+    const description = getDescription(dom);
+    const technologies = getTechnologies(dom);
 
     return {
       name: jobEvent.name,
@@ -93,33 +97,34 @@ const getDetails = async (
       description,
       company,
       tags,
-      technologies: [],
+      technologies,
     } as JobDetail;
   } catch (err) {
     console.error(err);
-  } finally {
-    await page.close();
   }
 };
 
+export const createDetails = async (jobDetail: JobDetail) => {
+  return dynamoDb
+    .put({
+      TableName: process.env.DYNAMODB_TABLE,
+      Item: {
+        Id: uuidv4(),
+        ...jobDetail,
+      },
+    })
+    .promise();
+};
+
 export const handler: SQSHandler = async (event) => {
-  let browser!: puppeteer.Browser;
+  for (const record of event.Records) {
+    const jobEvent = JSON.parse(record.body) as ScrapeJobDetailEvent;
+    console.log("job event", jobEvent);
 
-  try {
-    browser = await puppeteer.launch();
+    // scrape job details
+    const jobDetails = await getDetails(jobEvent);
 
-    for (const record of event.Records) {
-      const jobEvent = JSON.parse(record.body) as ScrapeJobDetailEvent;
-      console.log("job event", jobEvent);
-
-      // scrape job details
-      const jobDetails = await getDetails(jobEvent, browser);
-    }
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
+    // create the record
+    await createDetails(jobDetails);
   }
 };

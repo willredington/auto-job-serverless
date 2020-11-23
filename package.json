@@ -7,11 +7,11 @@
   },
   "dependencies": {
     "@types/axios": "^0.14.0",
-    "@types/puppeteer": "^5.4.0",
+    "@types/jsdom": "^16.2.5",
     "@types/uuid": "^8.3.0",
     "aws-sdk": "^2.797.0",
     "axios": "^0.21.0",
-    "puppeteer": "^5.5.0",
+    "jsdom": "^16.4.0",
     "source-map-support": "^0.5.10",
     "uuid": "^8.3.1"
   },
@@ -24,7 +24,6 @@
     "prettier-plugin-organize-imports": "^1.1.1",
     "serverless-plugin-layer-manager": "^1.0.5",
     "serverless-webpack": "^5.2.0",
-    "serverless-webpack-layers": "^1.0.5",
     "ts-loader": "^5.3.3",
     "ts-node": "^8.10.2",
     "typescript": "^3.2.4",
