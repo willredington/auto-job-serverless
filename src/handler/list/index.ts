@@ -13,8 +13,6 @@ const listJobs = async (
   jobEvent: ScrapeJobListingEvent,
   browser: puppeteer.Browser
 ) => {
-  console.log("using params", jobEvent);
-
   let pageIndex = 0;
 
   let page!: puppeteer.Page;
