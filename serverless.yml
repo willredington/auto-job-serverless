@@ -17,6 +17,7 @@ provider:
     minimumCompressionSize: 1024
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    TRIGGER_QUEUE_URL: { Ref: JobEventQueue }
     SCRAPE_QUEUE_URL: { Ref: JobDetailQueue }
     DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
   iamRoleStatements:
@@ -24,6 +25,7 @@ provider:
       Action:
         - sqs:SendMessage
       Resource:
+        - Fn::GetAtt: [JobEventQueue, Arn]
         - Fn::GetAtt: [JobDetailQueue, Arn]
     - Effect: Allow
       Action:
@@ -36,6 +38,13 @@ provider:
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
 
 functions:
+  trigger:
+    handler: src/handler/trigger/index.handler
+    events:
+      - http:
+          path: trigger
+          method: post
+          cors: true
   list:
     handler: src/handler/list/index.handler
     events:
