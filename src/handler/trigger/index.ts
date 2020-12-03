@@ -2,7 +2,6 @@ import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { SQS } from "aws-sdk";
 import { ScrapeJobListingEvent } from "model/event";
 import { CreateJobTriggerRequest } from "model/request";
-import "source-map-support/register";
 import { v4 as uuidv4 } from "uuid";
 
 const sqs = new SQS();

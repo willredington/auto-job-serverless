@@ -3,7 +3,6 @@ import { JobDetail } from "model/job-detail";
 import { v4 as uuidv4 } from "uuid";
 import * as jsdom from "jsdom";
 import axios from "axios";
-import "source-map-support/register";
 
 import { SQS } from "aws-sdk";
 import { ScrapeJobDetailEvent, ScrapeJobListingEvent } from "model/event";

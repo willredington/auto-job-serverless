@@ -5,7 +5,6 @@ import axios from "axios";
 import * as jsdom from "jsdom";
 import { v4 as uuidv4 } from "uuid";
 
-import "source-map-support/register";
 import { DynamoDB } from "aws-sdk";
 
 const dynamoDb = new DynamoDB.DocumentClient();

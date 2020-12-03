@@ -16,8 +16,8 @@ package:
     - events
 
 layers:
-  dependencies:
-    path: layers/dependencies
+  common:
+    path: layers/common
     compatibleRuntimes:
       - nodejs12.x
 
@@ -55,7 +55,7 @@ functions:
   trigger:
     handler: src/handler/trigger/index.handler
     layers:
-      - { Ref: DependenciesLambdaLayer }
+      - { Ref: CommonLambdaLayer }
     events:
       - http:
           path: trigger
@@ -65,7 +65,7 @@ functions:
   list:
     handler: src/handler/list/index.handler
     layers:
-      - { Ref: DependenciesLambdaLayer }
+      - { Ref: CommonLambdaLayer }
     events:
       - sqs:
           arn:
@@ -75,7 +75,7 @@ functions:
   detail:
     handler: src/handler/detail/index.handler
     layers:
-      - { Ref: DependenciesLambdaLayer }
+      - { Ref: CommonLambdaLayer }
     events:
       - sqs:
           arn:
