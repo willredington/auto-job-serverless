@@ -6,7 +6,6 @@ import * as jsdom from "jsdom";
 import { v4 as uuidv4 } from "uuid";
 
 import "source-map-support/register";
-import { String } from "aws-sdk/clients/apigateway";
 import { DynamoDB } from "aws-sdk";
 
 const dynamoDb = new DynamoDB.DocumentClient();
@@ -36,7 +35,7 @@ const getTags = (dom: jsdom.JSDOM) => {
 };
 
 const getTechnologies = (dom: jsdom.JSDOM) => {
-  let technologies: String[] = [];
+  let technologies: string[] = [];
 
   dom.window.document.querySelectorAll("a.post-tag").forEach((tagElement) => {
     technologies.push(tagElement.textContent);

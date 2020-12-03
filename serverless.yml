@@ -1,12 +1,25 @@
 service: auto-job
 
+plugins:
+  - serverless-offline
+  - serverless-webpack
+
 custom:
   webpack:
     webpackConfig: ./webpack.config.js
-    includeModules: true
+    includeModules: false
 
-plugins:
-  - serverless-webpack
+package:
+  exclude:
+    - node_modules
+    - layers
+    - events
+
+layers:
+  dependencies:
+    path: layers/dependencies
+    compatibleRuntimes:
+      - nodejs12.x
 
 provider:
   name: aws
@@ -35,18 +48,24 @@ provider:
         - dynamodb:PutItem
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
-      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+      Resource:
+        - Fn::GetAtt: [JobTable, Arn]
 
 functions:
   trigger:
     handler: src/handler/trigger/index.handler
+    layers:
+      - { Ref: DependenciesLambdaLayer }
     events:
       - http:
           path: trigger
           method: post
+          integration: lambda
           cors: true
   list:
     handler: src/handler/list/index.handler
+    layers:
+      - { Ref: DependenciesLambdaLayer }
     events:
       - sqs:
           arn:
@@ -55,6 +74,8 @@ functions:
               - Arn
   detail:
     handler: src/handler/detail/index.handler
+    layers:
+      - { Ref: DependenciesLambdaLayer }
     events:
       - sqs:
           arn:
