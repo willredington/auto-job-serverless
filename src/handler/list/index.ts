@@ -5,10 +5,15 @@ import * as jsdom from "jsdom";
 import axios from "axios";
 
 import { SQS } from "aws-sdk";
-import { ScrapeJobDetailEvent, ScrapeJobListingEvent } from "model/event";
+import {
+  BaseEvent,
+  ScrapeJobDetailEvent,
+  ScrapeJobListingEvent,
+} from "model/event";
 
 const sqs = new SQS();
 
+// TODO: need to revist pagination at some point
 const listJobs = async (jobEvent: ScrapeJobListingEvent) => {
   const pageIndex = 0;
   const details: Partial<JobDetail>[] = [];
@@ -39,30 +44,33 @@ const listJobs = async (jobEvent: ScrapeJobListingEvent) => {
 
 export const handler: SQSHandler = async (event, _) => {
   for (const record of event.Records) {
-    const jobEvent = JSON.parse(record.body) as ScrapeJobListingEvent;
+    const jobEvent = JSON.parse(record.body) as BaseEvent;
 
-    // scrape job details
-    const jobDetails = await listJobs(jobEvent);
+    if (jobEvent.type === "scrape-listing") {
+      // scrape job details
+      const jobDetails = await listJobs(jobEvent as ScrapeJobListingEvent);
 
-    const queueUrl = process.env.SCRAPE_QUEUE_URL;
+      const queueUrl = process.env.SCRAPE_QUEUE_URL;
 
-    // send job detail events to queue
-    for (const jobDetail of jobDetails) {
-      try {
-        const detailEvent: ScrapeJobDetailEvent = {
-          uuid: uuidv4(),
-          name: jobDetail.name,
-          link: jobDetail.link,
-        };
+      // send job detail events to queue
+      for (const jobDetail of jobDetails) {
+        try {
+          const detailEvent: ScrapeJobDetailEvent = {
+            uuid: uuidv4(),
+            type: "scrape-detail",
+            name: jobDetail.name,
+            link: jobDetail.link,
+          };
 
-        await sqs
-          .sendMessage({
-            QueueUrl: queueUrl,
-            MessageBody: JSON.stringify(detailEvent),
-          })
-          .promise();
-      } catch (err) {
-        console.error(err);
+          await sqs
+            .sendMessage({
+              QueueUrl: queueUrl,
+              MessageBody: JSON.stringify(detailEvent),
+            })
+            .promise();
+        } catch (err) {
+          console.error(err);
+        }
       }
     }
   }

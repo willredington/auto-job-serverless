@@ -28,6 +28,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, _) => {
   try {
     const jobEvent: ScrapeJobListingEvent = {
       uuid: uuidv4(),
+      type: "scrape-listing",
       ...request,
     };
 

@@ -1,5 +1,5 @@
 import { SQSHandler } from "aws-lambda";
-import { ScrapeJobDetailEvent } from "model/event";
+import { BaseEvent, ScrapeJobDetailEvent } from "model/event";
 import { Company, JobDetail, Tag } from "model/job-detail";
 import axios from "axios";
 import * as jsdom from "jsdom";
@@ -116,12 +116,14 @@ export const createDetails = async (jobDetail: JobDetail) => {
 
 export const handler: SQSHandler = async (event) => {
   for (const record of event.Records) {
-    const jobEvent = JSON.parse(record.body) as ScrapeJobDetailEvent;
+    const jobEvent = JSON.parse(record.body) as BaseEvent;
 
-    // scrape job details
-    const jobDetails = await getDetails(jobEvent);
+    if (jobEvent.type === "scrape-detail") {
+      // scrape job details
+      const jobDetails = await getDetails(jobEvent as ScrapeJobDetailEvent);
 
-    // create the record
-    await createDetails(jobDetails);
+      // create the record
+      await createDetails(jobDetails);
+    }
   }
 };
