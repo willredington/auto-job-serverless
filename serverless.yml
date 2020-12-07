@@ -56,12 +56,14 @@ functions:
     handler: src/handler/trigger/index.handler
     layers:
       - { Ref: CommonLambdaLayer }
+    integration: lambda
     events:
       - http:
           path: trigger
           method: post
           integration: lambda
           cors: true
+
   list:
     handler: src/handler/list/index.handler
     layers:
